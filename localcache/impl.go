@@ -3,32 +3,63 @@ Package localcache implements a simple local cache.
 */
 package localcache
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
-const expireTime = 30 * time.Second
+const defaultDuration = 30 * time.Second
 
-type cache struct{
-  items map[string]any
+type localCache struct {
+	mu    sync.RWMutex
+	items map[string]*cacheItem
+}
+
+type cacheItem struct {
+	val   any
+	timer *time.Timer
 }
 
 // New creates a new cache.
 func New() Cache {
-  return &cache{
-    items: make(map[string]any),
-  }
+	return &localCache{
+		items: make(map[string]*cacheItem),
+	}
 }
 
 // Get gets the value of the key.
-func (c *cache) Get(key string) (value any, ok bool) {
-  value, ok = c.items[key]
-  return
+func (c *localCache) Get(key string) (value any, ok bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	item, ok := c.items[key]
+	if !ok {
+		return nil, false
+	}
+	return item.val, true
 }
 
 // Set sets the value of the key.
-func (c *cache) Set(key string, value any) {
-  c.items[key] = value
-  go func() {
-    time.Sleep(expireTime)
-    delete(c.items, key)
-  }()
+func (c *localCache) Set(key string, value any, duration ...time.Duration) {
+	expiry := defaultDuration
+	if len(duration) > 0 {
+		expiry = duration[0]
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if oldItem, exists := c.items[key]; exists {
+		oldItem.timer.Stop()
+	}
+
+	c.items[key] = &cacheItem{
+		val: value,
+		timer: time.AfterFunc(expiry, func() {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+
+			delete(c.items, key)
+		}),
+	}
 }

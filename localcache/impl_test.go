@@ -1,51 +1,126 @@
 package localcache
 
 import (
-  "testing"
-  "time"
+	"testing"
+	"time"
 
-  "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNewCache(t *testing.T) {
-  cache := New()
-  assert.NotNil(t, cache)
+func TestLocalCacheSuite(t *testing.T) {
+	suite.Run(t, new(LocalCacheSuite))
 }
 
-func TestGetCache(t *testing.T) {
-  cache := New()
-  cache.Set("key1", "value1")
-  value, ok := cache.Get("key1")
-  assert.Equal(t, "value1", value)
-  assert.True(t, ok)
+type LocalCacheSuite struct {
+	suite.Suite
+	cache Cache
 }
 
-func TestSetCache(t *testing.T) {
-  cache := New()
-  cache.Set("key1", "value1")
-  value, ok := cache.Get("key1")
-  assert.Equal(t, "value1", value)
-  assert.True(t, ok)
+func (lcs *LocalCacheSuite) SetupSuite() {
+	lcs.cache = New()
 }
 
-func TestOverwriteCache(t *testing.T) {
-  cache := New()
-  cache.Set("key1", "value1")
-  cache.Set("key1", "value2")
-  value, ok := cache.Get("key1")
-  assert.Equal(t, "value2", value)
-  assert.True(t, ok)
+func (lcs *LocalCacheSuite) TestGet() {
+	testCase := []struct {
+		Desc      string
+		key       string
+		value     any
+		ExpResult any
+	}{
+		{
+			Desc:      "test get cache",
+			key:       "key1",
+			value:     "value1",
+			ExpResult: "value1",
+		},
+	}
+
+	for _, tc := range testCase {
+		lcs.cache.Set(tc.key, tc.value)
+
+		value, ok := lcs.cache.Get(tc.key)
+		lcs.Equal(tc.ExpResult, value, tc.Desc)
+		lcs.True(ok, tc.Desc)
+	}
 }
 
-func TestCacheExpire(t *testing.T) {
-  cache := New()
-  cache.Set("key1", "value1")
-  value, ok := cache.Get("key1")
-  assert.Equal(t, "value1", value)
-  assert.True(t, ok)
+func (lcs *LocalCacheSuite) TestSet() {
+	testCase := []struct {
+		Desc      string
+		key       string
+		value     any
+		ExpResult any
+	}{
+		{
+			Desc:      "test set cache",
+			key:       "key2",
+			value:     "value2",
+			ExpResult: "value2",
+		},
+		{
+			Desc:      "test overwrite cache",
+			key:       "key3",
+			value:     "value3",
+			ExpResult: "value3",
+		},
+	}
 
-  time.Sleep(30 * time.Second)
-  value, ok = cache.Get("key1")
-  assert.Nil(t, value)
-  assert.False(t, ok)
+	for _, tc := range testCase {
+		lcs.cache.Set(tc.key, tc.value)
+		value, ok := lcs.cache.Get(tc.key)
+		lcs.Equal(tc.ExpResult, value, tc.Desc)
+		lcs.True(ok, tc.Desc)
+	}
+}
+
+func (lcs *LocalCacheSuite) TestCacheExpire() {
+	testCase := []struct {
+		Desc     string
+		key      string
+		value    any
+		duration time.Duration
+	}{
+		{
+			Desc:     "test cache expire",
+			key:      "key4",
+			value:    "value4",
+			duration: 3 * time.Second,
+		},
+	}
+
+	for _, tc := range testCase {
+		lcs.cache.Set(tc.key, tc.value, tc.duration)
+		value, ok := lcs.cache.Get(tc.key)
+		lcs.Equal(tc.value, value, tc.Desc)
+		lcs.True(ok, tc.Desc)
+
+		time.Sleep(tc.duration + 1*time.Millisecond)
+		value, ok = lcs.cache.Get(tc.key)
+		lcs.Equal(nil, value, tc.Desc)
+		lcs.False(ok, tc.Desc)
+	}
+}
+
+func (lcs *LocalCacheSuite) TestCacheTimerReset() {
+	testCase := []struct {
+		Desc     string
+		key      string
+		value    any
+	}{
+		{
+			Desc:     "test cache timer reset",
+			key:      "key5",
+			value:    "value5",
+		},
+	}
+
+	for _, tc := range testCase {
+		lcs.cache.Set(tc.key, tc.value, 3*time.Second)
+		lcs.cache.Set(tc.key, tc.value, 1*time.Second)
+
+		time.Sleep(2 * time.Second)
+		value, ok := lcs.cache.Get(tc.key)
+		lcs.Equal(nil, value, tc.Desc)
+		lcs.False(ok, tc.Desc)
+	}
 }
