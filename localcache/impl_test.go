@@ -36,7 +36,7 @@ func (lcs *LocalCacheSuite) TestGet() {
 	}
 
 	for _, tc := range testCase {
-		lcs.cache.Set(tc.key, tc.value)
+		lcs.cache.Set(tc.key, tc.value, nil)
 
 		value, ok := lcs.cache.Get(tc.key)
 		lcs.Equal(tc.ExpResult, value, tc.Desc)
@@ -66,7 +66,7 @@ func (lcs *LocalCacheSuite) TestSet() {
 	}
 
 	for _, tc := range testCase {
-		lcs.cache.Set(tc.key, tc.value)
+		lcs.cache.Set(tc.key, tc.value, nil)
 		value, ok := lcs.cache.Get(tc.key)
 		lcs.Equal(tc.ExpResult, value, tc.Desc)
 		lcs.True(ok, tc.Desc)
@@ -89,7 +89,7 @@ func (lcs *LocalCacheSuite) TestCacheExpire() {
 	}
 
 	for _, tc := range testCase {
-		lcs.cache.Set(tc.key, tc.value, tc.duration)
+		lcs.cache.Set(tc.key, tc.value, &tc.duration)
 		value, ok := lcs.cache.Get(tc.key)
 		lcs.Equal(tc.value, value, tc.Desc)
 		lcs.True(ok, tc.Desc)
@@ -115,10 +115,12 @@ func (lcs *LocalCacheSuite) TestCacheTimerReset() {
 	}
 
 	for _, tc := range testCase {
-		lcs.cache.Set(tc.key, tc.value, 3*time.Second)
-		lcs.cache.Set(tc.key, tc.value, 1*time.Second)
+		duration := 3 * time.Millisecond
+		lcs.cache.Set(tc.key, tc.value, &duration)
+		duration = 1 * time.Millisecond
+		lcs.cache.Set(tc.key, tc.value, &duration)
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Millisecond)
 		value, ok := lcs.cache.Get(tc.key)
 		lcs.Equal(nil, value, tc.Desc)
 		lcs.False(ok, tc.Desc)

@@ -40,10 +40,10 @@ func (c *localCache) Get(key string) (value any, ok bool) {
 }
 
 // Set sets the value of the key.
-func (c *localCache) Set(key string, value any, duration ...time.Duration) {
+func (c *localCache) Set(key string, value any, duration *time.Duration) {
 	expiry := defaultDuration
-	if len(duration) > 0 {
-		expiry = duration[0]
+	if duration != nil {
+		expiry = *duration
 	}
 
 	c.mu.Lock()
