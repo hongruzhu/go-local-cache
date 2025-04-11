@@ -84,7 +84,7 @@ func (lcs *LocalCacheSuite) TestCacheExpire() {
 			Desc:     "test cache expire",
 			key:      "key4",
 			value:    "value4",
-			duration: 3 * time.Second,
+			duration: 3 * time.Millisecond,
 		},
 	}
 
